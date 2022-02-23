@@ -93,14 +93,14 @@ private:
         }
         else if(nbytes == 0){
             printf("close fd\n");
-            ::close(fd);
             m_base->removeHandler(pHandler.get());
+            ::close(fd);
             m_handleList.erase(fd);
         }
         else{
             printf("read error.\n");
-            ::close(fd);
             m_base->removeHandler(pHandler.get());
+            ::close(fd);
             m_handleList.erase(fd);
         }
         
@@ -116,8 +116,8 @@ private:
         }
         else {
             printf("error. write failed.\n");
-            ::close(fd);
             m_base->removeHandler(pHandler.get());
+            ::close(fd);
             m_handleList.erase(fd);
         }
     }
