@@ -1,6 +1,7 @@
 #pragma once 
 #include <iostream>
 #include "CallBack.h"
+#include "EpollPoller.h"
 
 #define MAX_BUFLEN 4096
 class Handler{
@@ -40,6 +41,9 @@ public:
     int length(){
         return m_len;
     }
+    
+public:
+    EpollPoller * poll_;
 
 private:
     int m_fd;

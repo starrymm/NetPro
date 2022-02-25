@@ -2,17 +2,15 @@
 
 #include <vector>
 #include <sys/epoll.h>
+#include <string>
 
 class Handler;
 class EpollPoller{
     typedef std::vector<epoll_event> EventList;
 
 public:
-    EpollPoller();
+    EpollPoller(std::string thread_name);
     ~EpollPoller();
-
-    EpollPoller(const EpollPoller &) = delete;
-    EpollPoller &operator=(const EpollPoller &) = delete;
 
     //调用 epoll_ctl添加事件句柄
     void update(Handler *);
@@ -24,10 +22,16 @@ public:
     std::vector<Handler *> poll();
     static const int initEventListSize = 16;
 
+public:
+    pthread_t owner_thread_id_;
+    std::string thread_name_;
+    
 private:
     std::vector<Handler *> fillActiveChannels(int);
 
 private:
     int m_epfd;
+    
     EventList m_activeEventList;
+    
 };

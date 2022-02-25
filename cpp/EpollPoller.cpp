@@ -4,9 +4,12 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <assert.h>
+#include <string>
 
  
-EpollPoller::EpollPoller():m_activeEventList(initEventListSize){
+EpollPoller::EpollPoller(std::string thread_name):
+    thread_name_(thread_name),m_activeEventList(initEventListSize){
+    owner_thread_id_ = pthread_self();
     m_epfd = epoll_create1(EPOLL_CLOEXEC);
 }
 EpollPoller::~EpollPoller(){
