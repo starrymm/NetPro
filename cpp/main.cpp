@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <string>
 
 #include <iostream>
 #include <vector>
@@ -16,11 +17,12 @@
 #include <functional>
 
 using namespace std::placeholders;
-
+using namespace std;
 class ThreadPoll;
-class EchoServer{
+class HttpServer{
 public:
-    EchoServer(int port, EpollPoller * mainLoop, int threadNums):
+    //端口、主线程、子线程数量
+    HttpServer(int port, EpollPoller * mainLoop, int threadNums):
     port_(port), mainLoop_(mainLoop), threadNums_(threadNums)
     {
         threadPoll_ = new ThreadPool(mainLoop_, threadNums);
@@ -59,7 +61,7 @@ private:
             printf("error. listen failed.\n");
             exit(-1);
         }
-        listenHandler->setReadCallback(std::bind(&EchoServer::acceptConn, this, _1));
+        listenHandler->setReadCallback(std::bind(&HttpServer::acceptConn, this, _1));
         listenHandler->enableRead();
         listenHandler->poll_ = mainLoop_;
         mainLoop_->update(listenHandler.get());
@@ -75,7 +77,7 @@ private:
         }
         auto connHandler = std::make_shared<Handler>(connfd);
         handlerList_[connfd] = connHandler;
-        connHandler->setReadCallback(std::bind(&EchoServer::readData, this, _1));
+        connHandler->setReadCallback(std::bind(&HttpServer::readData, this, _1));
         connHandler->enableRead();
         EpollPoller * selected =  threadPoll_->getNextLoop();
         printf("assign Handler to thread: %s\n", selected->thread_name_.c_str());
@@ -91,7 +93,7 @@ private:
             pHandler->buff()[nbytes] = 0;
             printf("%s\n", pHandler->buff());
             pHandler->setLen(nbytes);
-            pHandler->setWriteCallback(std::bind(&EchoServer::sendData, this, _1));
+            pHandler->setWriteCallback(std::bind(&HttpServer::sendData, this, _1));
             pHandler->enableWrite();
             pHandler->poll_->update(pHandler.get());
         }
@@ -112,11 +114,15 @@ private:
 
     void sendData(int fd){
         auto pHandler = handlerList_[fd];
-        int nbytes = write(fd, pHandler->buff(), pHandler->length());
-        if(nbytes > 0){
-            pHandler->setReadCallback(std::bind(&EchoServer::readData, this, _1));
-            pHandler->enableRead();
-            pHandler->poll_->update(pHandler.get());
+        char *request = pHandler->buff();
+        string res;
+        int n = parseHttp(request, res);
+        int nbytes = write(fd, res.c_str(), n);
+        if(nbytes == n){
+            pHandler->poll_->remove(pHandler.get());
+            ::close(fd);
+            handlerList_.erase(fd);
+            printf("close connection.\n");
         }
         else {
             printf("error. write failed.\n");
@@ -126,19 +132,36 @@ private:
         }
     }
 
+    int parseHttp(char * request, std::string &res){
+        if(strstr(request, "GET / ") || strstr(request, "GET /index.html")){
+            res += "HTTP/1.1 200 OK\r\n";   
+            res += "Server: WebServer\r\n";
+            res += "Content-Type: text/html\r\n\r\n";
+            res += "<html><head><h1>Welcome to HttpServer</h1></head>";
+            res += "<body>Hello, ^_^</body></html>\r\n";
+        }
+        else {
+            res += "HTTP/1.1 404 Not Found\r\n";
+            res += "Server: WebServer\r\n";
+            res += "Content-Type: text/html\r\n\r\n";
+            res += "<html>not found page</html>\r\n";
+        }
+        return res.size();
+    }
+
 private:
     int port_;
     int threadNums_;
     EpollPoller *mainLoop_;
     ThreadPool *threadPoll_;
-
     std::map<int, std::shared_ptr<Handler>> handlerList_;
+
 };
 
 
 int main(int argc, char *argv[]){
     EpollPoller * mainLoop = new EpollPoller("main thread");
-    EchoServer server(7777, mainLoop, 4);
+    HttpServer server(7777, mainLoop, 4);
     server.start();
     runLoop(mainLoop);
     return 0;
