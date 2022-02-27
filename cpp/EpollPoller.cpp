@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <string>
-
+int output = 0;
  
 EpollPoller::EpollPoller(std::string thread_name):
     thread_name_(thread_name),m_activeEventList(initEventListSize){
@@ -32,14 +32,17 @@ EpollPoller::update(Handler * handler){
     handler->m_isInEpoll = true;
     int ret = epoll_ctl(m_epfd, op, handler->fd(), &epEvent);
     if (ret < 0){
-        printf("error. epoll_ctl add failed on fd = %d\n", handler->fd());
+        if(output)
+            printf("error. epoll_ctl add failed on fd = %d\n", handler->fd());
     }
     else{
         if(epEvent.events & EPOLLIN){
-            printf("[EPOLLIN] epoll_ctl add fd = %d success \n", handler->fd());
+            if(output)
+                printf("[EPOLLIN] epoll_ctl add fd = %d success \n", handler->fd());
         }
         else if(epEvent.events & EPOLLOUT){
-            printf("[EPOLLOUT] epoll_ctl add fd = %d success \n", handler->fd());
+            if(output)
+                printf("[EPOLLOUT] epoll_ctl add fd = %d success \n", handler->fd());
         }
     }
 }   
@@ -52,7 +55,8 @@ EpollPoller::remove(Handler * handler){
     int op = EPOLL_CTL_DEL;
     int ret = epoll_ctl(m_epfd, op, handler->fd(), NULL);
     if(ret < 0){
-        printf("error. epoll_ctl del failed on fd = %d \n", handler->fd());
+        if(output)
+            printf("error. epoll_ctl del failed on fd = %d \n", handler->fd());
     }
 }
 
@@ -90,7 +94,8 @@ EpollPoller::poll(){
 
     }
     else {
-        printf("error. nreadys = %d\n", nreadys);
+        if(output)
+            printf("error. nreadys = %d\n", nreadys);
     }
     return activeEventPtrList;
 }
